@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 import rospy
 from sensor_msgs.msg import Joy
-from geometry_msgs.msg import Point
+from drive.msg import drive_msg
 from numpy import interp
 
 
  #if turned on the direction is reversed
 
-pwm=[0,0,0]
+pwm=[0,0,0,0]
  
-point = Point()
-
+drivex=drive_msg()
 
 def find_pwmtest3(msg):
     '''dir_n = 0 
@@ -31,18 +30,40 @@ def find_pwmtest3(msg):
     if (msg.buttons[5] == 0):
        pwm[1]=0
       '''
-    pwmtotal=interp(msg.axes[1],[-1,1],[-255,255])
-    pwmdir=interp(msg.axes[2],[-1,1],[-155,155])
-    pwm[2]=0
-    if(pwmtotal<0):
-	pwm[2]=1
-        pwmtotal=pwmtotal*-1
-    if(pwmdir>=0):
-        pwm[0]=pwmtotal-pwmdir
-	pwm[1]=0
-    if(pwmdir<0):
-	pwm[0]=0
-	pwm[1]=pwmtotal+pwmdir
+    if(msg.buttons[6]==0):
+        pwndir=0
+        pwmtotal=interp(msg.axes[1],[-1,1],[-255,255])
+        pwmdir=interp(msg.axes[3],[-1,1],[-155,155])
+        #rospy.loginfo(pwmdir)
+        #rospy.loginfo(pwmtotal)
+        pwm[2]=0
+        pwm[3]=0
+        if(pwmtotal<0):
+            pwm[2]=1
+	    pwm[3]=1
+	    pwmtotal=pwmtotal*-1
+        if(pwmdir>=0):
+            pwm[0] = pwmtotal - pwmdir
+            pwm[1]= pwmtotal
+	if(pwmdir<0):
+	    pwm[0]= pwmtotal
+	    pwm[1]= pwmtotal + pwmdir
+	if(msg.buttons[4]==1):
+	    pwm[0]=200
+	    pwm[1]=200	
+	    pwm[2]=1
+	    pwm[3]=0	
+	if(msg.buttons[5]==1):
+	    pwm[0]=200
+	    pwm[1]=200
+	    pwm[2]=0
+	    pwm[3]=1
+    else:
+	    pwm[0]=0
+            pwm[1]=0	
+	    pwm[2]=0
+	    pwm[3]=0
+
     #rospy.loginfo("left  pwm %f",pwm[0])
     #rospy.loginfo("right pwm %f",pwm[1])
     rospy.loginfo(pwm)
@@ -58,13 +79,13 @@ def find_pwmtest2(msg):
  	pwm[2] = dir_n  
         pwmtotal=pwmtotal*-1
     if (msg.buttons[4] == 1):
-       pwm[0]=pwmtotal
+        pwm[0]=pwmtotal
     if (msg.buttons[4] == 0):
-       pwm[0]=0   
+        pwm[0]=0   
     if (msg.buttons[5] == 1):
-       pwm[1]=pwmtotal
+        pwm[1]=pwmtotal
     if (msg.buttons[5] == 0):
-       pwm[1]=0
+        pwm[1]=0
       
     #rospy.loginfo("left  pwm %f",pwm[0])
     #rospy.loginfo("right pwm %f",pwm[1])
@@ -80,19 +101,20 @@ def find_pwmtest1(msg): #1st case when 2 pwm valus are send for left ans right s
     rospy.loginfo("left  pwm %f",pwm[0])
     rospy.loginfo("right pwm %f",pwm[1])
 
-def transform(a):
-    point.x = pwm[0] 
-    point.y = pwm[1]
-    point.z = pwm[2]  
+#def transform(a):
+#    point.x = pwm[0] 
+#    point.y = pwm[1]
+#    point.z = pwm[2]  
 
 def callback(msg):
     rate = rospy.Rate(100)
     find_pwmtest3(msg)
-    point.x = pwm[0] 
-    point.y = pwm[1]
-    point.z = pwm[2]
-    pub = rospy.Publisher('rover_drive', Point ,queue_size=100)  
-    pub.publish(point)
+    drivex.lpwm = pwm[0] 
+    drivex.rpwm = pwm[1]
+    drivex.ldir = bool(pwm[2])
+    drivex.rdir = bool(pwm[3])
+    pub = rospy.Publisher('rover_drive', drive_msg ,queue_size=10)  
+    pub.publish(drivex)
     rate.sleep()
     #rospy.loginfo("I heard %f",msg.buttons[])
     
